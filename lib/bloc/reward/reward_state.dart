@@ -29,7 +29,7 @@ abstract class RewardState {
     }
 
     // Calculate remaining time
-    final remainingMinutes = 60 - difference.inMinutes % 60;
+    final remainingMinutes = 59 - difference.inMinutes % 60;
     final remainingSeconds = 60 - difference.inSeconds % 60;
     return "Next scratch: $remainingMinutes min(s) $remainingSeconds sec(s)";
   }
