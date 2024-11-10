@@ -1,4 +1,4 @@
-# Reward-Ad System
+# Reward-App System
 
 This is a Flutter-based application for a reward system where users can earn coins through scratch cards and redeem them for various items. The app uses the **Bloc pattern** to manage the state of the application, providing a clean and scalable structure.
 
