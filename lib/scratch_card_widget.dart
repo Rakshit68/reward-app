@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:math';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:reward_app/bloc/transaction/transaction_event.dart';
 import 'bloc/reward/reward_bloc.dart';
 import 'bloc/reward/reward_event.dart';
 import 'bloc/reward/reward_state.dart';
@@ -16,34 +17,41 @@ class ScratchCardWidget extends StatefulWidget {
 }
 
 class _ScratchCardWidgetState extends State<ScratchCardWidget> {
-  // Scratch area
   List<Offset?> _scratchPoints = [];
   double _scratchProgress = 0.0;
   bool _isScratched = false;
-
-  // Constants for the scratch detection
-  final double scratchThreshold = 0.7;
-  final int maxPoints = 100;
-
+  bool _isCardVisible = true;
   final GlobalKey _cardKey = GlobalKey();
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    // Setting states after the widget is built
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _startAutoUpdate();
-    });
+    _startAutoUpdate();
   }
 
   void _startAutoUpdate() {
-    // Using a periodic timer
-    Timer.periodic(const Duration(seconds: 1), (Timer timer) {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
       if (mounted) {
         setState(() {});
-      } else {
-        timer.cancel();
       }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _resetScratchCard() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {
+        _isScratched = false;
+        _scratchPoints.clear();
+        _isCardVisible = true;
+      });
     });
   }
 
@@ -51,111 +59,121 @@ class _ScratchCardWidgetState extends State<ScratchCardWidget> {
   Widget build(BuildContext context) {
     return BlocBuilder<RewardBloc, RewardState>(
       builder: (context, state) {
-        //current scratch status
         bool canScratch = state.canScratch();
         String remainingTime = state.remainingTime();
 
-        Color cardColor =
-            _isScratched || !canScratch ? Colors.grey : Colors.blue;
+        // If the timer has completed, show a new scratch card
+        if (canScratch && !_isCardVisible) {
+          _resetScratchCard();
+        }
 
-        return GestureDetector(
-          onPanUpdate: (details) {
-            //checking scratching inside card area
-            if (_isScratched) return;
+        Color cardColor = _isScratched || !canScratch || !_isCardVisible
+            ? Colors.grey
+            : Colors.blue;
 
-            // Get the position and size of the card
-            final RenderBox renderBox =
-                _cardKey.currentContext!.findRenderObject() as RenderBox;
-            final cardPosition = renderBox.localToGlobal(Offset.zero);
-            final cardSize = renderBox.size;
+        return Center(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onPanUpdate: (details) {
+                    if (_isScratched || !canScratch || !_isCardVisible) return;
 
-            // Calculate if the touch is within the card's area
-            if (details.globalPosition.dx >= cardPosition.dx &&
-                details.globalPosition.dx <= cardPosition.dx + cardSize.width &&
-                details.globalPosition.dy >= cardPosition.dy &&
-                details.globalPosition.dy <=
-                    cardPosition.dy + cardSize.height) {
-              setState(() {
-                _scratchPoints
-                    .add(renderBox.globalToLocal(details.globalPosition));
-                _scratchProgress = _scratchPoints.length / maxPoints;
-                debugPrint('Scratch progress: $_scratchProgress');
-                if (_scratchProgress >= scratchThreshold) {
-                  _isScratched = true;
-                }
-              });
-            }
-          },
-          onPanEnd: (_) {
-            if (_scratchProgress >= scratchThreshold) {
-              // Proceed to show reward when scratched more than 70%
-              final reward = Random().nextInt(451) + 50;
-              context.read<RewardBloc>().add(ScratchCardEvent(reward));
-              context.read<TransactionBloc>().add(
-                    AddTransactionEvent(
-                        'Scratch Reward', reward, DateTime.now()),
-                  );
+                    final RenderBox renderBox = _cardKey.currentContext!
+                        .findRenderObject() as RenderBox;
+                    final cardPosition = renderBox.localToGlobal(Offset.zero);
+                    final cardSize = renderBox.size;
 
-              //scratched popup
-              showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return AlertDialog(
-                    title: const Text("Congratulations!"),
-                    content: Text("You won $reward coins!"),
-                    actions: <Widget>[
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                        child: const Text("OK"),
-                      ),
-                    ],
-                  );
-                },
-              );
-              _scratchProgress = 0;
-              _scratchPoints.clear();
-            }
-          },
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              key: _cardKey,
-              width: 300,
-              height: 300,
-              color: cardColor,
-              alignment: Alignment.center,
-              child: Stack(
-                children: [
-                  //card area
-                  Container(
-                    color: Colors.blue,
-                    child: Center(
-                      child: Text(
-                        canScratch
-                            ? "Scratch to Win"
-                            : "No more scratches left",
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ),
-                  // The scratchable layer
-                  CustomPaint(
-                    size: const Size(200, 100),
-                    painter: ScratchPainter(scratchPoints: _scratchPoints),
-                  ),
-                  //remaining time
-                  Positioned(
-                    bottom: 10,
-                    left: 10,
-                    child: Text(
-                      remainingTime,
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
+                    if (details.globalPosition.dx >= cardPosition.dx &&
+                        details.globalPosition.dx <=
+                            cardPosition.dx + cardSize.width &&
+                        details.globalPosition.dy >= cardPosition.dy &&
+                        details.globalPosition.dy <=
+                            cardPosition.dy + cardSize.height) {
+                      setState(() {
+                        _scratchPoints.add(
+                            renderBox.globalToLocal(details.globalPosition));
+                        _scratchProgress = _scratchPoints.length / 100;
+                        if (_scratchProgress >= 0.7) {
+                          _isScratched = true;
+                          _isCardVisible = false;
+
+                          // Trigger reward logic
+                          final reward = Random().nextInt(451) + 50;
+                          context
+                              .read<RewardBloc>()
+                              .add(ScratchCardEvent(reward));
+                          context.read<TransactionBloc>().add(
+                                AddTransactionEvent(
+                                    'Scratch Reward', reward, DateTime.now()),
+                              );
+
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: const Text("Congratulations!"),
+                                content: Text("You won $reward coins!"),
+                                actions: <Widget>[
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                    child: const Text("OK"),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        }
+                      });
+                    }
+                  },
+                  child: _isCardVisible
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            key: _cardKey,
+                            width: 300,
+                            height: 300,
+                            color: cardColor,
+                            alignment: Alignment.center,
+                            child: Stack(
+                              children: [
+                                Center(
+                                  child: Text(
+                                    canScratch
+                                        ? "Scratch to Win"
+                                        : "No more scratches left",
+                                    style: const TextStyle(color: Colors.white),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                                CustomPaint(
+                                  size: const Size(300, 300),
+                                  painter: ScratchPainter(
+                                      scratchPoints: _scratchPoints),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : Container(
+                          width: 300,
+                          height: 300,
+                          alignment: Alignment.center,
+                          child: FittedBox(
+                            fit: BoxFit.contain,
+                            child: Text(
+                              remainingTime,
+                              style: const TextStyle(color: Colors.black),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                ),
+              ],
             ),
           ),
         );
@@ -176,7 +194,6 @@ class ScratchPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..strokeWidth = 30;
 
-    // Draw all the scratched points
     for (var point in scratchPoints) {
       if (point != null) {
         canvas.drawCircle(point, 20, paint);

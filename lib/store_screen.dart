@@ -51,10 +51,18 @@ class StoreScreen extends StatelessWidget {
                             context: context,
                             builder: (BuildContext context) {
                               return AlertDialog(
-                                title: const Text("Congratulations!"),
+                                title: const Text("Congratulations!",
+                                  style: const TextStyle(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 32,
+                                  ),
+                                ),
+                                
                                 content: Text(
                                   "You have successfully redeemed $itemName!\n"
                                   "Current Coin Balance: ${rewardState.coins - itemCost}",
+                                
                                 ),
                                 actions: <Widget>[
                                   TextButton(
@@ -74,7 +82,13 @@ class StoreScreen extends StatelessWidget {
                             context: context,
                             builder: (BuildContext context) {
                               return AlertDialog(
-                                title: const Text("Insufficient Funds"),
+                                title: const Text("Insufficient Funds",
+                                  style: const TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 32,
+                                  ),
+                                ),
                                 content: Text(
                                   "You do not have enough coins to redeem this item.\n"
                                   "Current Coin Balance: ${rewardState.coins}",

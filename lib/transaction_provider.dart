@@ -1,43 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'bloc/transaction/transaction_bloc.dart';
+import 'bloc/transaction/transaction_state.dart';
 
-class Transaction {
-  final String type;
-  final int amount;
-  final DateTime date;
+class HistoryScreen extends StatelessWidget {
+  const HistoryScreen({super.key});
 
-  Transaction({required this.type, required this.amount, required this.date});
-}
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Transaction History')),
+      body: BlocBuilder<TransactionBloc, TransactionState>(
+        builder: (context, state) {
+          // Reverse the transaction list to show the latest transactions at the top
+          final reversedTransactions = state.transactions.reversed.toList();
 
-class TransactionProvider with ChangeNotifier {
-  int _coinBalance = 1000;
-  List<Transaction> _transactions = [];
-
-  int get coinBalance => _coinBalance;
-  List<Transaction> get transactions => _transactions;
-
-  void addCoins(int coins) {
-    _coinBalance += coins;
-    _transactions.add(
-      Transaction(
-        type: 'Scratch Reward',
-        amount: coins,
-        date: DateTime.now(),
+          return ListView.builder(
+            itemCount: reversedTransactions.length,
+            itemBuilder: (context, index) {
+              final transaction = reversedTransactions[index];
+              final sign = transaction['amount'] > 0 ? '+' : '';
+              return ListTile(
+                title: Text(transaction['type']),
+                subtitle: Text(
+                  '$sign${transaction['amount']} Coins on ${transaction['date']}',
+                ),
+              );
+            },
+          );
+        },
       ),
     );
-    notifyListeners();
-  }
-
-  void redeemItem(int cost, String itemName) {
-    if (_coinBalance >= cost) {
-      _coinBalance -= cost;
-      _transactions.add(
-        Transaction(
-          type: 'Redeemed Item: $itemName',
-          amount: -cost,
-          date: DateTime.now(),
-        ),
-      );
-      notifyListeners();
-    }
   }
 }

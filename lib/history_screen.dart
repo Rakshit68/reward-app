@@ -9,13 +9,16 @@ class HistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Transaction History')),
+      appBar: AppBar(title: Text('Transaction History')),
       body: BlocBuilder<TransactionBloc, TransactionState>(
         builder: (context, state) {
+          // Reverse the transaction list to show the latest transactions at the top
+          final reversedTransactions = state.transactions.reversed.toList();
+
           return ListView.builder(
-            itemCount: state.transactions.length,
+            itemCount: reversedTransactions.length,
             itemBuilder: (context, index) {
-              final transaction = state.transactions[index];
+              final transaction = reversedTransactions[index];
               final sign = transaction['amount'] > 0 ? '+' : '';
               return ListTile(
                 title: Text(transaction['type']),

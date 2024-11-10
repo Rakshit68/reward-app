@@ -9,3 +9,7 @@ class RedeemItemEvent extends RewardEvent {
   final int cost;
   RedeemItemEvent(this.cost);
 }
+
+class ScratchCardUsedEvent extends RewardEvent {}
+
+class ResetScratchCardEvent extends RewardEvent {}
